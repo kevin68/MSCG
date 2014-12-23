@@ -9,7 +9,11 @@ import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
+import net.minecraft.block.Block;
+import net.minecraft.block.properties.IProperty;
+import net.minecraft.block.state.IBlockState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.creativetab.CreativeTabs;
@@ -17,9 +21,14 @@ import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.item.Item;
 import net.minecraft.util.BlockPos;
+import net.minecraft.util.ChatComponentTranslation;
+import net.minecraft.util.ResourceLocation;
+import net.minecraft.world.World;
+import net.minecraft.world.WorldType;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent.Action;
+import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.fml.common.FMLCommonHandler;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.common.Mod.EventHandler;
@@ -46,15 +55,16 @@ public class MSCG
 	public static Item selector, generator;
 
 	public static Map<EntityPlayer, BlockPos[]> selections = new HashMap<EntityPlayer, BlockPos[]>();
+	private static Map<Block, String> blocksName = new HashMap<Block, String>();
 
 	@EventHandler
 	public void preInitMSCG(FMLPreInitializationEvent event)
 	{
-		selector = new Item().setUnlocalizedName("mscg.selector").setCreativeTab(CreativeTabs.tabTools);
-		GameRegistry.registerItem(selector, "mscg.selector");
+		selector = new Item().setUnlocalizedName("mscg_selector").setCreativeTab(CreativeTabs.tabTools);
+		GameRegistry.registerItem(selector, "mscg_selector");
 
-		generator = new ItemGenerator().setUnlocalizedName("mscg.generator").setCreativeTab(CreativeTabs.tabTools);
-		GameRegistry.registerItem(generator, "mscg.generator");
+		generator = new ItemGenerator().setUnlocalizedName("mscg_generator").setCreativeTab(CreativeTabs.tabTools);
+		GameRegistry.registerItem(generator, "mscg_generator");
 		MinecraftForge.EVENT_BUS.register(this);
 		FMLCommonHandler.instance().bus().register(this);
 
@@ -66,8 +76,17 @@ public class MSCG
 	{
 		if(event.getSide() == Side.CLIENT)
 		{
-			Minecraft.getMinecraft().getRenderItem().getItemModelMesher().register(selector, 0, new ModelResourceLocation(MODID + ":selector", "inventory"));
-			Minecraft.getMinecraft().getRenderItem().getItemModelMesher().register(generator, 0, new ModelResourceLocation(MODID + ":generator", "inventory"));
+			Minecraft.getMinecraft().getRenderItem().getItemModelMesher().register(selector, 0, new ModelResourceLocation(MODID + ":mscg_selector", "inventory"));
+			Minecraft.getMinecraft().getRenderItem().getItemModelMesher().register(generator, 0, new ModelResourceLocation(MODID + ":mscg_generator", "inventory"));
+		}
+
+		Set keys = Block.blockRegistry.getKeys();
+		for(Object o : keys)
+		{
+			Object ob = Block.blockRegistry.getObject(o);
+			String name = ((ResourceLocation)o).getResourceDomain() + ":" + ((ResourceLocation)o).getResourcePath();
+			System.out.println(name);
+			blocksName.put((Block)ob, name);
 		}
 	}
 
@@ -88,15 +107,35 @@ public class MSCG
 					BlockPos[] p = selections.get(event.entityPlayer);
 					if(event.action == Action.LEFT_CLICK_BLOCK)
 					{
-						p[0] = event.pos;
+						if(event.pos != null)
+						{
+							p[0] = event.pos;
+							event.entityPlayer.addChatMessage(new ChatComponentTranslation("message.pos1.set", event.pos.getX(), event.pos.getY(), event.pos.getZ()));
+						}
 					}
 					else if(event.action == Action.RIGHT_CLICK_BLOCK)
 					{
-						p[1] = event.pos;
+						if(event.pos != null)
+						{
+							p[1] = event.pos;
+							event.entityPlayer.addChatMessage(new ChatComponentTranslation("message.pos2.set", event.pos.getX(), event.pos.getY(), event.pos.getZ()));
+						}
 					}
 					selections.put(event.entityPlayer, p);
 					packetHandler.sendTo(new PacketSelection(p), (EntityPlayerMP)event.entityPlayer);
 				}
+			}
+		}
+	}
+
+	@SubscribeEvent
+	public void breakBlockEvent(BlockEvent.BreakEvent event)
+	{
+		if(event.getPlayer().getCurrentEquippedItem() != null)
+		{
+			if(event.getPlayer().getCurrentEquippedItem().getItem() == selector)
+			{
+				event.setCanceled(true);
 			}
 		}
 	}
@@ -140,40 +179,131 @@ public class MSCG
 	public static void generateFile(EntityPlayer player)
 	{
 		List<BlockPos> l = getBlockList(player);
-
-		Calendar c = Calendar.getInstance();
-		File folder = new File(Minecraft.getMinecraft().mcDataDir.getParentFile(), "mscg");
-		File file = new File(folder, +c.get(Calendar.DAY_OF_MONTH) + "d" + c.get(Calendar.MONTH) + "m" + c.get(Calendar.YEAR) + "y_" + c.get(Calendar.HOUR_OF_DAY) + "h" + c.get(Calendar.MINUTE) + "m" + c.get(Calendar.SECOND) + "s.java");
-		try
+		if(l == null || l.isEmpty())
 		{
-			if(!folder.exists())
+			player.addChatMessage(new ChatComponentTranslation("message.create.failed", "NullPointerException"));
+		}
+		else
+		{
+			Calendar c = Calendar.getInstance();
+			File folder = new File(FMLCommonHandler.instance().getSavesDirectory().getParentFile(), "mscg");
+			File file = new File(folder, +c.get(Calendar.DAY_OF_MONTH) + "d" + c.get(Calendar.MONTH) + "m" + c.get(Calendar.YEAR) + "y_" + c.get(Calendar.HOUR_OF_DAY) + "h" + c.get(Calendar.MINUTE) + "m" + c.get(Calendar.SECOND) + "s.java");
+			try
 			{
-				folder.mkdirs();
+				if(!folder.exists())
+				{
+					folder.mkdirs();
+				}
+				if(!file.exists())
+				{
+					file.createNewFile();
+				}
+
+				List<String> imports = new ArrayList<String>();
+				List<String> blocksGen = new ArrayList<String>();
+
+				for(BlockPos pos : l)
+				{
+					List<String> str = getBlockCode(player.worldObj, pos, l.get(0));
+					if(str.size() > 1)
+					{
+						List<String> st = str.subList(str.size() - 2, str.size() - 1);
+						for(String s : st)
+						{
+							if(!imports.contains(s))
+							{
+								imports.add(s);
+							}
+						}
+					}
+					blocksGen.add(str.get(str.size() - 1));
+				}
+
+				FileWriter fw = new FileWriter(file.getAbsoluteFile());
+				BufferedWriter bw = new BufferedWriter(fw);
+				bw.write("//Warning this class may be too long for eclipse and your computer, if it is you can cut it.\n");
+				bw.write("package name.your.package.here;\n");
+				bw.write("\n");
+				bw.write("import java.util.Random;\n");
+				bw.write("import net.minecraft.init.Blocks;\n");
+				bw.write("import net.minecraft.util.BlockPos;\n");
+				bw.write("import net.minecraft.world.World\n");
+				bw.write("import net.minecraft.world.gen.feature.WorldGenerator;\n");
+				for(String s : imports)
+				{
+					bw.write("import " + s + ";\n");
+				}
+				bw.write("\n");
+				bw.write("public Class NameYourClass extends WorldGenerator\n");
+				bw.write("{\n");
+				bw.write("    @Override\n");
+				bw.write("    public boolean generate(World world, Random rand, BlockPos pos)\n");
+				bw.write("    {\n");
+				for(String s : blocksGen)
+				{
+					bw.write(s);
+				}
+				bw.write("        return true;\n");
+				bw.write("    }\n");
+				bw.write("}");
+				bw.close();
+				player.addChatMessage(new ChatComponentTranslation("message.create.success", file.getName()));
 			}
-			if(!file.exists())
+			catch(IOException e)
 			{
-				file.createNewFile();
+				player.addChatMessage(new ChatComponentTranslation("message.create.failed", e.getLocalizedMessage()));
+				e.printStackTrace();
+			}
+		}
+	}
+
+	public static List<String> getBlockCode(World world, BlockPos p, BlockPos start)
+	{
+		List<String> result = new ArrayList<String>();
+		if(!world.isRemote)
+		{
+			IBlockState b = world.getBlockState(p);
+			if(world.getWorldType() != WorldType.DEBUG_WORLD)
+			{
+				b = b.getBlock().getActualState(b, world, p);
+			}
+			int x = p.getX() - start.getX();
+			int y = p.getY() - start.getY();
+			int z = p.getZ() - start.getZ();
+			if(world.isAirBlock(p))
+			{
+				result.add("        world.setBlockToAir(pos.add(" + x + ", " + y + ", " + z + "));\n");
+				return result;
+			}
+			String prop = "";
+			for(int i = 0; i < b.getPropertyNames().toArray().length; i++)
+			{
+				Object o = b.getPropertyNames().toArray()[i];
+				Object o0 = b.getProperties().get(o);
+				Object o1 = b.getValue((IProperty)o);
+
+				String clazz = o1.getClass().toString().substring(6);
+				String[] part = clazz.split("\\.");
+				String parentchild = part[part.length - 1].replace("$", ".");
+
+				String blockClass = b.getBlock().getClass().toString().substring(6);
+				String[] blockPart = blockClass.split("\\.");
+				String bClass = blockPart[blockPart.length - 1];
+
+				String s = o1.toString();
+				result.add(blockClass);
+				prop += ".withProperty(" + bClass + "." + ((IProperty)o).getName().toUpperCase() + ", " + (s == "false" || s == "true" ? s : parentchild + "." + s.toUpperCase()) + ")";
 			}
 
-			FileWriter fw = new FileWriter(file.getAbsoluteFile());
-			BufferedWriter bw = new BufferedWriter(fw);
-			bw.write("//Warning this class may be too long for eclipse and your computer, if it is you can cut it.\n");
-			bw.write("package name.your.package.here;\n");
-			bw.write("\n");
-			bw.write("import net.minecraft.world.World\n");
-			bw.write("\n");
-			bw.write("public Class NameYourClass\n");
-			bw.write("{\n");
-			bw.write("    public static void generate(World world, BlockPos pos)\n");
-			bw.write("    {\n");
-			// Blocks
-			bw.write("    }\n");
-			bw.write("}");
-			bw.close();
+			String name = blocksName.get(b.getBlock()).split(":")[1];
+			Boolean mc = blocksName.get(b.getBlock()).split(":")[0].equalsIgnoreCase("minecraft");
+			String block = (mc ? "Blocks." : "/* /!\\ */YourClass.") + name + (mc ? "" : "/*Mod Block!!!!!!!! /!\\ */") + ".getDefaultState()";
+			result.add("        world.setBlockState(pos.add(" + x + ", " + y + ", " + z + "), " + block + prop + ");\n");
 		}
-		catch(IOException e)
+		if(result.size() < 1)
 		{
-			e.printStackTrace();
+			result.add("");
 		}
+		return result;
 	}
 }

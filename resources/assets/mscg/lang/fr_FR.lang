@@ -1,0 +1,4 @@
+message.pos1.set=Sélection 1 mise en %d, %d, %d
+message.pos2.set=Sélection 2 mise en %d, %d, %d
+message.create.success=Création du fichier réussie! Enregistré sous le nom %s
+message.create.failed=Création du fichier échouée! Erreur : %s

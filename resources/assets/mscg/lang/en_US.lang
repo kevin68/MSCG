@@ -1,0 +1,4 @@
+message.pos1.set=Selection 1 set to %d, %d, %d
+message.pos2.set=Selection 2 set to %d, %d, %d
+message.create.success=File succefully created! Saved as %s
+message.create.failed=File's creation failed! Error: %s

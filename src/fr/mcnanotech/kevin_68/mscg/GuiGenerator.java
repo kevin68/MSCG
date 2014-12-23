@@ -4,6 +4,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.entity.player.EntityPlayer;
+import fr.mcnanotech.kevin_68.mscg.packets.PacketGenerateFile;
 
 public class GuiGenerator extends GuiScreen
 {
@@ -26,8 +27,17 @@ public class GuiGenerator extends GuiScreen
 		{
 		case 0:
 		{
-			MSCG.generateFile(Minecraft.getMinecraft().thePlayer);
+			MSCG.packetHandler.sendToServer(new PacketGenerateFile());
+			// MSCG.generateFile(Minecraft.getMinecraft().thePlayer);
+			Minecraft.getMinecraft().displayGuiScreen(null);
+			Minecraft.getMinecraft().setIngameFocus();
 		}
 		}
+	}
+
+	@Override
+	public boolean doesGuiPauseGame()
+	{
+		return false;
 	}
 }

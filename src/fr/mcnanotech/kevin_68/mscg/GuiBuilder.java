@@ -3,16 +3,15 @@ package fr.mcnanotech.kevin_68.mscg;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
-import net.minecraft.entity.player.EntityPlayer;
 import fr.mcnanotech.kevin_68.mscg.packets.PacketGenerateFile;
 import fr.minecraftforgefrance.ffmtlibs.client.gui.GuiBooleanButton;
 
-public class GuiGenerator extends GuiScreen
+public class GuiBuilder extends GuiScreen
 {
     private GuiBooleanButton excludeAir;
     private GuiBooleanButton sorting;
 
-    public GuiGenerator(EntityPlayer player)
+    public GuiBuilder(int x, int y, int z)
     {
 
     }

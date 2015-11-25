@@ -88,8 +88,8 @@ public class MSCG
             Minecraft.getMinecraft().getRenderItem().getItemModelMesher().register(generator, 0, new ModelResourceLocation(MODID + ":mscg_generator", "inventory"));
         }
 
-        Set keys = Block.blockRegistry.getKeys();
-        for(Object o : keys)
+        Set<ResourceLocation> keys = Block.blockRegistry.getKeys();
+        for(ResourceLocation o : keys)
         {
             Object ob = Block.blockRegistry.getObject(o);
             String name = ((ResourceLocation)o).getResourceDomain() + ":" + ((ResourceLocation)o).getResourcePath();
